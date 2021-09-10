@@ -4,7 +4,7 @@ params = struct(...
         'nR', 1000,... % Spatial discretisation.
         'nT', 5000,... % Time discretisation
         'outerBCConstant', 0,... % Stress boundary condition constant `kappa'.
-        'psi', 0.15,... % Rate of nutrient consumption by tissue.
+        'nutrientConsumptionRate', 0.15,... % Rate of nutrient consumption by tissue.
         'necrosisThreshold', 0.8,... % Necrosis threshold.
         'stressIntegrandThreshold', 1e-1,... % Radial threshold for using Taylor expansion of integrand.
         'stressGrowthThreshold', -1,... % Threshold below which growth is stopped by stress
@@ -34,7 +34,7 @@ for tInd = 1 : params.nT
     stresses(tInd,:) = computeStress(RsMinusOne(tInd,:),rs(tInd,:),growthStretches(tInd,:),params);
 
     % Compute the current nutrient concentration.
-    nutrients(tInd,:) = 1 - params.psi * (rs(tInd,end)^2 - rs(tInd,:).^2) / 6;
+    nutrients(tInd,:) = 1 - params.nutrientConsumptionRate * (rs(tInd,end)^2 - rs(tInd,:).^2) / 6;
 
     % Compute the growth rate.
     growthRates(tInd,:) = computeGrowthRate(stresses(tInd,:),nutrients(tInd,:),params);
