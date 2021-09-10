@@ -3,7 +3,7 @@ params = struct(...
         'T', 30,... % Final time.
         'nR', 1000,... % Spatial discretisation.
         'nT', 5000,... % Time discretisation
-        'outerBCConstant', 0,... % Stress boundary condition constant `kappa'.
+        'stresBoundaryConstant', 0,... % Stress boundary condition constant `kappa'.
         'nutrientConsumptionRate', 0.15,... % Rate of nutrient consumption by tissue.
         'necrosisThreshold', 0.8,... % Necrosis threshold.
         'stressIntegrandThreshold', 1e-1,... % Radial threshold for using Taylor expansion of integrand.
@@ -95,7 +95,7 @@ function stress = computeStress(RMinusOne,r,growthStretch,params)
                         integrand.*(RMinusOne>(params.stressIntegrandThreshold-1));
     integral = fliplr(cumtrapz(fliplr(RMinusOne),fliplr(integrandComposite)));
 
-    stress = - params.outerBCConstant*(r(end) - 1) - integral;
+    stress = - params.stresBoundaryConstant*(r(end) - 1) - integral;
 end
 
 
