@@ -3,13 +3,16 @@ params = struct(...
         'T', 30,... % Final time.
         'nR', 1000,... % Spatial discretisation.
         'nT', 5000,... % Time discretisation
-        'stresBoundaryConstant', 0,... % Stress boundary condition constant `kappa'.
+        'stressBoundaryConstant', 0,... % Stress boundary condition constant `kappa'.
         'nutrientConsumptionRate', 0.15,... % Rate of nutrient consumption by tissue.
         'necrosisThreshold', 0.8,... % Necrosis threshold.
         'stressIntegrandThreshold', 1e-1,... % Radial threshold for using Taylor expansion of integrand.
         'stressGrowthThreshold', -1,... % Threshold below which growth is stopped by stress
         'globalStressResponse', true... % Boolean to signify global (true) or local (false) stress response.
 );
+% Compute the threshold radius of the spheroid, after which a core of zero
+% nutrient forms.
+params.outerBoundaryNutrientThreshold = sqrt(6/params.nutrientConsumptionRate);
 
 % Initial discretisation.
 RsMinusOne = zeros(params.nT,params.nR); RsMinusOne(1,:) = linspace(0,1,params.nR) - 1;
@@ -34,7 +37,7 @@ for tInd = 1 : params.nT
     stresses(tInd,:) = computeStress(RsMinusOne(tInd,:),rs(tInd,:),growthStretches(tInd,:),params);
 
     % Compute the current nutrient concentration.
-    nutrients(tInd,:) = 1 - params.nutrientConsumptionRate * (rs(tInd,end)^2 - rs(tInd,:).^2) / 6;
+    nutrients(tInd,:) = computeNutrient(rs(tInd,:),params);
 
     % Compute the growth rate.
     growthRates(tInd,:) = computeGrowthRate(stresses(tInd,:),nutrients(tInd,:),params);
@@ -95,7 +98,39 @@ function stress = computeStress(RMinusOne,r,growthStretch,params)
                         integrand.*(RMinusOne>(params.stressIntegrandThreshold-1));
     integral = fliplr(cumtrapz(fliplr(RMinusOne),fliplr(integrandComposite)));
 
-    stress = - params.stresBoundaryConstant*(r(end) - 1) - integral;
+    stress = - params.stressBoundaryConstant*(r(end) - 1) - integral;
+end
+
+function nutrient = computeNutrient(r,params)
+%% Compute the nutrient concentration at the material points of r.
+    b = r(end);
+    if b <= params.outerBoundaryNutrientThreshold
+        % If no core of zero nutrient has developed:
+        nutrient = 1 - params.nutrientConsumptionRate * (b^2 - r.^2) / 6;
+    else
+        % Else, a core of zero nutrient has developed: Find the root of the
+        % polynomial that defines the radius of the core. We'll do this
+        % crudely, then pass our guess into fzero.
+        as = linspace(0,b,1e4);
+        f = @(a) (2 * a.^3 - 3 * a.^2 * b + b^3) * params.nutrientConsumptionRate - 6 * b;
+        fs = f(as);
+        guessInd = find(fs(1:end-1).*fs(2:end)<=0,1,'first');
+        % If no root has been found, the root must be between as(1) and as
+        % (2). If so, we repeat the above calculation. The root is unlikely
+        % to be within 1e-8 of zero, which is when this approach will fail.
+        if isempty(guessInd)
+            as = linspace(0,as(2),1e4);
+            fs = f(as);
+            guessInd = find(fs(1:end-1).*fs(2:end)<=0,1,'first');
+        end
+        rThreshold = fzero(f, as(guessInd:guessInd+1));
+        nutrient = 0*r;
+        mask = r > rThreshold;
+        nutrient(mask) =params.nutrientConsumptionRate * r(mask).^2 / 6 + ...
+                        (params.nutrientConsumptionRate * rThreshold^3 / 3)./r(mask) - ...
+                        params.nutrientConsumptionRate * (2 * rThreshold^3 + b^3) / (6 * b) + ...
+                        1;
+    end
 end
 
 
