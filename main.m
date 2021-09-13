@@ -26,6 +26,7 @@ radii = zeros(params.nT,1);
 stresses = zeros(params.nT,params.nR);
 nutrients = zeros(params.nT,params.nR);
 
+clear('textprogressbar.m')
 textprogressbar('Simulating growth: ');
 for tInd = 1 : params.nT
     textprogressbar(100*tInd/params.nT);
