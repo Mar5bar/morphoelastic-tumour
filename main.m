@@ -6,7 +6,7 @@ params = struct(...
         'stressBoundaryConstant', 0,... % Stress boundary condition constant `kappa'.
         'nutrientConsumptionRate', 0.15,... % Rate of nutrient consumption by tissue.
         'necrosisThreshold', 0.8,... % Necrosis threshold.
-        'stressIntegrandThreshold', 1e-1,... % Radial threshold for using Taylor expansion of integrand.
+        'stressIntegrandThreshold', 2e-1,... % Radial threshold for using Taylor expansion of integrand.
         'stressGrowthThreshold', -1,... % Threshold below which growth is stopped by stress
         'globalStressResponse', true... % Boolean to signify global (true) or local (false) stress response.
 );
@@ -97,9 +97,9 @@ function stress = computeStress(RMinusOne,r,growthStretch,params)
                      6/5 * growthStretchPrimePrime(1)/growthStretch(1))*(RMinusOne+1));
     integrandComposite = approxIntegrand.*(RMinusOne<=(params.stressIntegrandThreshold-1)) + ...
                         integrand.*(RMinusOne>(params.stressIntegrandThreshold-1));
-    integral = fliplr(cumtrapz(fliplr(RMinusOne),fliplr(integrandComposite)));
+    integral = cumtrapz(RMinusOne,integrandComposite);
 
-    stress = - params.stressBoundaryConstant*(r(end) - 1) - integral;
+    stress = integral - params.stressBoundaryConstant*(r(end) - 1) - integral(end);
 end
 
 function nutrient = computeNutrient(r,params)
