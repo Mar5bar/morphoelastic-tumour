@@ -16,7 +16,14 @@ plot(ts,rs(:,end),'Color','black','LineWidth',1)
 nutrientsTemp = nutrients; nutrientsTemp(nutrients<params.necrosisThreshold) = 0; nutrientsTemp(nutrients>=params.necrosisThreshold) = 1;
 [~,necroticThresholdInds] = max(nutrientsTemp,[],2,'linear');
 plot(ts, rs(necroticThresholdInds),'Color',0.7*[1,1,1],'LineWidth',1);
-legend({'Outer radius','Necrotic radius'},'Location','southeast')
+legendEntries = {'Outer radius','Necrotic radius'};
+if any(nutrients(:) == 0)
+    nutrientsTemp = nutrients; nutrientsTemp(nutrients > 0) = 1;
+    [~,zeroNutrientThresholdInds] = max(nutrientsTemp,[],2,'linear');
+    plot(ts, rs(zeroNutrientThresholdInds),'Color',0.4*[1,1,1],'LineWidth',1);
+    legendEntries{end+1} = 'Nutrient-free radius';
+end
+legend(legendEntries,'Location','southeast')
 box on
 xlabel('$t$')
 title('Spheroid radius')
