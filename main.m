@@ -99,7 +99,7 @@ function stress = computeStress(RMinusOne,r,growthStretch,params)
                         integrand.*(RMinusOne>(params.stressIntegrandThreshold-1));
     integral = cumtrapz(RMinusOne,integrandComposite);
 
-    stress = integral - params.stressBoundaryConstant*(r(end) - 1) - integral(end);
+    stress = (integral - integral(end)) - params.stressBoundaryConstant*(r(end) - 1);
 end
 
 function nutrient = computeNutrient(r,params)
