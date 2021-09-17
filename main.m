@@ -6,7 +6,7 @@ params = struct(...
         'stressBoundaryConstant', 0,... % Stress boundary condition constant `kappa'.
         'nutrientConsumptionRate', 0.15,... % Rate of nutrient consumption by tissue.
         'necrosisThreshold', 0.8,... % Necrosis threshold.
-        'stressIntegrandThreshold', 2e-1,... % Radial threshold for using Taylor expansion of integrand.
+        'stressIntegrandThreshold', 0.05,... % Radial threshold for using Taylor expansion of integrand.
         'stressGrowthThreshold', -1,... % Threshold below which growth is stopped by stress
         'globalStressResponse', true... % Boolean to signify global (true) or local (false) stress response.
 );
