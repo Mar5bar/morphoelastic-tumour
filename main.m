@@ -9,7 +9,8 @@ params = struct(...
         'radialStressIntegrandThreshold', 0.05,... % Radial threshold for using Taylor expansion of radial stress integrand.
         'elasticStretchIntegrandThreshold', 0.05,... % Radial threshold for using Taylor expansion of elastic stretch.
         'stressGrowthThreshold', -1,... % Threshold below which growth is stopped by stress
-        'globalStressResponse', true... % Boolean to signify global (true) or local (false) stress response.
+        'globalStressResponse', true,... % Boolean to signify global (true) or local (false) stress response.
+        'stressType', 'radial'... % Type of stress to use in nAux. One of 'radial', 'hoop', or 'bulk'.
 );
 % Compute the threshold radius of the spheroid, after which a core of zero
 % nutrient forms.
@@ -46,7 +47,14 @@ for tInd = 1 : params.nT
     nutrients(tInd,:) = computeNutrient(rs(tInd,:),params);
 
     % Compute the growth rate.
-    growthRates(tInd,:) = computeGrowthRate(radialStresses(tInd,:),nutrients(tInd,:),params);
+    switch params.stressType
+    case 'radial'
+        growthRates(tInd,:) = computeGrowthRate(radialStresses(tInd,:),nutrients(tInd,:),params);    
+    case 'hoop'
+        growthRates(tInd,:) = computeGrowthRate(hoopStresses(tInd,:),nutrients(tInd,:),params);
+    case 'bulk'
+        growthRates(tInd,:) = computeGrowthRate(bulkStresses(tInd,:),nutrients(tInd,:),params);
+    end
 
     %% If there will be a next step
     if tInd < params.nT
