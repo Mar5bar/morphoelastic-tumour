@@ -3,6 +3,7 @@ params = struct(...
         'T', 30,... % Final time.
         'nR', 1000,... % Spatial discretisation.
         'nT', 5000,... % Time discretisation
+        'initialRadius', 1, ... % Initial dimensional radius of the spheroid.
         'radialStressBoundaryConstant', 0,... % Stress boundary condition constant `kappa'.
         'nutrientConsumptionRate', 0.15,... % Rate of nutrient consumption by tissue.
         'necrosisThreshold', 0.8,... % Necrosis threshold.
@@ -17,7 +18,7 @@ params = struct(...
 params.outerBoundaryNutrientThreshold = sqrt(6/params.nutrientConsumptionRate);
 
 % Initial discretisation.
-RsMinusOne = zeros(params.nT,params.nR); RsMinusOne(1,:) = linspace(0,1,params.nR) - 1;
+RsMinusB = zeros(params.nT,params.nR); RsMinusB(1,:) = linspace(0,params.initialRadius,params.nR) - params.initialRadius;
 ts = linspace(0,params.T,params.nT);
 
 % Computed values to store.
@@ -37,11 +38,11 @@ for tInd = 1 : params.nT
     textprogressbar(100*tInd/params.nT);
 
     % Compute the Eulerian radial coordinates.
-    rs(tInd,:) = computeRadialCoord(RsMinusOne(tInd,:),growthStretches(tInd,:));
+    rs(tInd,:) = computeRadialCoord(RsMinusB(tInd,:),growthStretches(tInd,:),params);
 
     % Compute the radial, hoop, and bulk stresses in the current configuration.
     [radialStresses(tInd,:), hoopStresses(tInd,:), bulkStresses(tInd,:), elasticStretches(tInd,:)] = ...
-            computeStresses(RsMinusOne(tInd,:),rs(tInd,:),growthStretches(tInd,:),params);
+            computeStresses(RsMinusB(tInd,:),rs(tInd,:),growthStretches(tInd,:),params);
 
     % Compute the current nutrient concentration.
     nutrients(tInd,:) = computeNutrient(rs(tInd,:),params);
@@ -60,15 +61,15 @@ for tInd = 1 : params.nT
     if tInd < params.nT
 
         % Compute a new discretisation.
-        RsMinusOne(tInd+1,:) = interp1(rs(tInd,:), RsMinusOne(tInd,:), linspace(rs(tInd,1),rs(tInd,end),params.nR));
+        RsMinusB(tInd+1,:) = interp1(rs(tInd,:), RsMinusB(tInd,:), linspace(rs(tInd,1),rs(tInd,end),params.nR));
 
         % Map current r, stress, nutrient, growthStretch and growthRate onto the new
         % discretisation, storing them temporarily.
-        rRemapped = interp1(RsMinusOne(tInd,:), rs(tInd,:), RsMinusOne(tInd+1,:));
-        stressRemapped = interp1(RsMinusOne(tInd,:), radialStresses(tInd,:), RsMinusOne(tInd+1,:));
-        nutrientRemapped = interp1(RsMinusOne(tInd,:), nutrients(tInd,:), RsMinusOne(tInd+1,:));
-        growthStretchRemapped = interp1(RsMinusOne(tInd,:), growthStretches(tInd,:), RsMinusOne(tInd+1,:));
-        growthRateRemapped = interp1(RsMinusOne(tInd,:), growthRates(tInd,:), RsMinusOne(tInd+1,:));
+        rRemapped = interp1(RsMinusB(tInd,:), rs(tInd,:), RsMinusB(tInd+1,:));
+        stressRemapped = interp1(RsMinusB(tInd,:), radialStresses(tInd,:), RsMinusB(tInd+1,:));
+        nutrientRemapped = interp1(RsMinusB(tInd,:), nutrients(tInd,:), RsMinusB(tInd+1,:));
+        growthStretchRemapped = interp1(RsMinusB(tInd,:), growthStretches(tInd,:), RsMinusB(tInd+1,:));
+        growthRateRemapped = interp1(RsMinusB(tInd,:), growthRates(tInd,:), RsMinusB(tInd+1,:));
 
         % Timestep gamma from tInd to tInd+1 using the mapped quantities from above.
         growthStretches(tInd+1,:) = growthStretchRemapped + ...
@@ -87,45 +88,45 @@ plot_spheroid(ts, rs, growthStretches, growthRates, radialStresses, nutrients, p
 plot_evolution(ts, rs, growthStretches, growthRates, radialStresses, nutrients, params);
 
 
-function r = computeRadialCoord(RMinusOne,growthStretch)
+function r = computeRadialCoord(RMinusB,growthStretch,params)
 %% Compute the Eulerian radial coordinates from the growth stretches at the
-%% material points in RMinusOne.
-    r = (3*cumtrapz(RMinusOne,growthStretch.^3.*(RMinusOne+1).^2)).^(1/3);
+%% material points in RMinusB.
+    r = (3*cumtrapz(RMinusB,growthStretch.^3.*(RMinusB+params.initialRadius).^2)).^(1/3);
 end
 
-function [radialStress, hoopStress, bulkStress, elasticStretch] = computeStresses(RMinusOne,r,growthStretch,params)
+function [radialStress, hoopStress, bulkStress, elasticStretch] = computeStresses(RMinusB,r,growthStretch,params)
 %% Compute the radial and hoop stresses from the radial coordinates and growth
-%% stretches at the material points in RMinusOne.
+%% stretches at the material points in RMinusB.
 
     % Compute the radial stress first.
-    integrand = 2*growthStretch.*(r.^6 - growthStretch.^6.*(RMinusOne+1).^6)./r.^7;
+    integrand = 2*growthStretch.*(r.^6 - growthStretch.^6.*(RMinusB+params.initialRadius).^6)./r.^7;
     % Ignore the value at R=0, which is NaN.
     integrand(1) = 0;
 
     % The integrand is poorly computed around R = 0, so we use a two-term
     % Taylor expansion of the integrand around this point. We use the Taylor
     % expansion until we reach a threshold of R = params.radialStressIntegrandThreshold.
-    growthStretchPrime = gradient(growthStretch, RMinusOne);
-    growthStretchPrimePrime = gradient(growthStretchPrime, RMinusOne);
+    growthStretchPrime = gradient(growthStretch, RMinusB);
+    growthStretchPrimePrime = gradient(growthStretchPrime, RMinusB);
     approxIntegrand = 2*(-3/2 * growthStretchPrime(1)/gamma(1) + ...
                      (3/80 * (growthStretchPrime(1)/growthStretch(1))^2 - ...
-                     6/5 * growthStretchPrimePrime(1)/growthStretch(1))*(RMinusOne+1));
-    integrandComposite = approxIntegrand.*(RMinusOne<=(params.radialStressIntegrandThreshold-1)) + ...
-                        integrand.*(RMinusOne>(params.radialStressIntegrandThreshold-1));
-    integral = cumtrapz(RMinusOne,integrandComposite);
+                     6/5 * growthStretchPrimePrime(1)/growthStretch(1))*(RMinusB+params.initialRadius));
+    integrandComposite = approxIntegrand.*(RMinusB<=(params.radialStressIntegrandThreshold-params.initialRadius)) + ...
+                        integrand.*(RMinusB>(params.radialStressIntegrandThreshold-params.initialRadius));
+    integral = cumtrapz(RMinusB,integrandComposite);
 
-    radialStress = (integral - integral(end)) - params.radialStressBoundaryConstant*(r(end) - 1);
+    radialStress = (integral - integral(end)) - params.radialStressBoundaryConstant*(r(end) - params.initialRadius);
 
     % Compute the hoop stress from the radial stress.
-    elasticStretch = r  ./ ((RMinusOne+1).*growthStretch);
+    elasticStretch = r  ./ ((RMinusB+params.initialRadius).*growthStretch);
     % Ignore the value at R=0, which is NaN.
     elasticStretch(1) = 1;
     
     % As before, we'll use a two-term Taylor expansion to compute the
     % elastic stretch near R=0.
-    approxElasticStretch = 1 - (growthStretchPrime(1)/gamma(1)).*(RMinusOne+1)/4;
-    elasticStretch = approxElasticStretch.*(RMinusOne<=(params.elasticStretchIntegrandThreshold-1)) + ...
-                        elasticStretch.*(RMinusOne>(params.elasticStretchIntegrandThreshold-1));
+    approxElasticStretch = 1 - (growthStretchPrime(1)/gamma(1)).*(RMinusB+params.initialRadius)/4;
+    elasticStretch = approxElasticStretch.*(RMinusB<=(params.elasticStretchIntegrandThreshold-params.initialRadius)) + ...
+                        elasticStretch.*(RMinusB>(params.elasticStretchIntegrandThreshold-params.initialRadius));
 
     hoopStress = radialStress + (elasticStretch.^2 - 1./elasticStretch.^4);
 
