@@ -115,7 +115,7 @@ function [radialStress, hoopStress, bulkStress, elasticStretch] = computeStresse
                         integrand.*(RMinusB>(params.radialStressIntegrandThreshold-params.initialRadius));
     integral = cumtrapz(RMinusB,integrandComposite);
 
-    radialStress = (integral - integral(end)) - params.radialStressBoundaryConstant*(r(end) - params.initialRadius);
+    radialStress = (integral - integral(end)) - params.radialStressBoundaryConstant*(r(end) - params.initialRadius)/params.initialRadius;
 
     % Compute the hoop stress from the radial stress.
     elasticStretch = r  ./ ((RMinusB+params.initialRadius).*growthStretch);
