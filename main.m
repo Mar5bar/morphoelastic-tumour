@@ -11,7 +11,10 @@ params = struct(...
         'elasticStretchIntegrandThreshold', 0.05,... % Radial threshold for using Taylor expansion of elastic stretch.
         'stressGrowthThreshold', -1,... % Threshold below which growth is stopped by stress
         'stressResponse', 'global - boundary',... % Type of stress response. One of 'local', 'global - boundary', 'global - min', or 'none'.
-        'stressType', 'radial'... % Type of stress to use in nAux. One of 'radial', 'hoop', or 'bulk'.
+        'stressType', 'radial',... % Type of stress to use in nAux. One of 'radial', 'hoop', or 'bulk'.
+        'nAuxSelector', 2, ... % Selects the approxpriate auxiliary stress modifier. One of 1 or 2.
+        'growthLawSelector', 2, ... % Selects the approxpriate growth law. One of 1 or 2.
+        'necroticDecay', false ... % Does the necrotic material decay away?
 );
 % Compute the threshold radius of the spheroid, after which a core of zero
 % nutrient forms.
@@ -31,6 +34,7 @@ hoopStresses = zeros(params.nT,params.nR);
 bulkStresses = zeros(params.nT,params.nR);
 elasticStretches = zeros(params.nT,params.nR);
 nutrients = zeros(params.nT,params.nR);
+necroticRadii = zeros(params.nT,1)-Inf;
 
 clear('textprogressbar.m')
 textprogressbar('Simulating growth: ');
@@ -47,14 +51,17 @@ for tInd = 1 : params.nT
     % Compute the current nutrient concentration.
     nutrients(tInd,:) = computeNutrient(rs(tInd,:),params);
 
+    % Compute the current Eulerian radius of the necrotic core.
+    necroticRadii(tInd) = computeNecroticRadius(necroticRadii(1:tInd-1),rs(tInd,:),nutrients(tInd,:),params);
+
     % Compute the growth rate.
     switch params.stressType
     case 'radial'
-        growthRates(tInd,:) = computeGrowthRate(radialStresses(tInd,:),nutrients(tInd,:),params);    
+        growthRates(tInd,:) = computeGrowthRate(radialStresses(tInd,:),nutrients(tInd,:),rs(tInd,:),necroticRadii(tInd),params);
     case 'hoop'
-        growthRates(tInd,:) = computeGrowthRate(hoopStresses(tInd,:),nutrients(tInd,:),params);
+        growthRates(tInd,:) = computeGrowthRate(hoopStresses(tInd,:),nutrients(tInd,:),rs(tInd,:),necroticRadii(tInd),params);
     case 'bulk'
-        growthRates(tInd,:) = computeGrowthRate(bulkStresses(tInd,:),nutrients(tInd,:),params);
+        growthRates(tInd,:) = computeGrowthRate(bulkStresses(tInd,:),nutrients(tInd,:),rs(tInd,:),necroticRadii(tInd),params);
     end
 
     %% If there will be a next step
@@ -85,7 +92,7 @@ radii(:) = rs(:,end);
 % Plotting.
 plot_spheroid(ts, rs, growthStretches, growthRates, radialStresses, nutrients, params, 1);
 plot_spheroid(ts, rs, growthStretches, growthRates, radialStresses, nutrients, params, params.nT);
-plot_evolution(ts, rs, growthStretches, growthRates, radialStresses, nutrients, params);
+plot_evolution(ts, rs, growthStretches, growthRates, radialStresses, nutrients, necroticRadii, params);
 
 
 function r = computeRadialCoord(RMinusB,growthStretch,params)
@@ -168,9 +175,36 @@ function nutrient = computeNutrient(r,params)
 end
 
 
-function growthRate = computeGrowthRate(stress,nutrient,params)
+function necroticRadius = computeNecroticRadius(previousRadii,r,nutrient,params)
+%% Returns the current radius of the necrotic core.
+    % Compute the nutrient-determined candidate radius.
+    nutrientDeterminedRadius = max([r(find(nutrient<params.necrosisThreshold,1,'last')),-Inf]);
+    if params.necroticDecay
+        % If the necrotic tissue can decay, we define necrosis via a Greenspan-like threshold.
+        necroticRadius = nutrientDeterminedRadius;
+    else
+        % If the necrotic tissue cannot decay, we define necrosis as the max
+        % of the nutrientDeterminedRadius and the previous radii.
+        necroticRadius = max([nutrientDeterminedRadius; previousRadii]);
+    end
+end
+
+
+function growthRate = computeGrowthRate(stress,nutrient,r,necroticRadius,params)
 %% Returns the growthRate as a function of stress and nutrient.
-    growthRate = growthStressResponse(stress,params) .* (nutrient - params.necrosisThreshold);
+    switch params.growthLawSelector
+    case 1
+        growthRate = growthStressResponse(stress,params) .* (nutrient - params.necrosisThreshold);
+    case 2
+        growthRateOne = growthStressResponse(stress,params) .* (nutrient - params.necrosisThreshold);
+        if params.necroticDecay
+            growthRateTwo = nutrient - params.necrosisThreshold;
+        else
+            growthRateTwo = 0;
+        end
+        mask = r > necroticRadius;
+        growthRate = growthRateOne.*mask + growthRateTwo.*(1-mask);
+    end
 end
 
 function n = growthStressResponse(stress,params)
