@@ -10,7 +10,7 @@ params = struct(...
         'radialStressIntegrandThreshold', 0.05,... % Radial threshold for using Taylor expansion of radial stress integrand.
         'elasticStretchIntegrandThreshold', 0.05,... % Radial threshold for using Taylor expansion of elastic stretch.
         'stressGrowthThreshold', -1,... % Threshold below which growth is stopped by stress
-        'globalStressResponse', true,... % Boolean to signify global (true) or local (false) stress response.
+        'stressResponse', 'global - boundary',... % Type of stress response. One of 'local', 'global - boundary', 'global - min', or 'none'.
         'stressType', 'radial'... % Type of stress to use in nAux. One of 'radial', 'hoop', or 'bulk'.
 );
 % Compute the threshold radius of the spheroid, after which a core of zero
@@ -175,12 +175,19 @@ end
 
 function n = growthStressResponse(stress,params)
 %% Returns the growthStressResponse `n' as a function of stress.
-    if params.globalStressResponse
-        % For global stress response to stress at the boundary:
-        n = nAux(stress(end),params) * ones(size(stress));
-    else
+    switch params.stressResponse
+    case 'local'
         % For local stress response.
         n = nAux(stress,params);
+    case 'global - boundary'
+        % For global stress response to stress at the boundary:
+        n = nAux(stress(end),params) * ones(size(stress));
+    case 'global - min'
+        % For global stress response to largest compressive stress:
+        n = nAux(min(stress),params) * ones(size(stress));
+    case 'none'
+        % For no stress response.
+        n = ones(size(stress));
     end
 end
 
