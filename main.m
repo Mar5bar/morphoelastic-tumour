@@ -51,6 +51,7 @@ plot_evolution(output);
 
 % Generate reduced output.
 reducedOutput = struct();
+reducedOutput.ts = output.ts;
 reducedOutput.radii = output.rs(:,end);
 reducedOutput.rFinal = output.rs(end,:);
 reducedOutput.growthRatesFinal = output.growthRates(end,:);
@@ -60,6 +61,8 @@ reducedOutput.radialStressCentre = output.radialStresses(:,1);
 reducedOutput.hoopStressCentre = output.hoopStresses(:,1);
 reducedOutput.radialStressFinal = output.radialStresses(end,:);
 reducedOutput.hoopStressFinal = output.hoopStresses(end,:);
+reducedOutput.params = params;
+reducedOutput.necroticRadii = output.necroticRadii;
 
 % save('output.mat','output')
 save('reducedOutput.mat','reducedOutput')
