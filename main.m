@@ -19,6 +19,7 @@ params.kappa = 0; % Spring constant in the radial stress boundary condition.
 % Growth rate parameters.
 params.k = 1; % The basic growth rate constant.
 params.sigmaHat = -1; % Threshold below which growth is arrested due to compressive stress, if included in the model.
+params.beta = 1; % Scale factor for the local argument of n, if included in the model.
 
 % Nutrient parameters.
 params.cInf = 1; % Concentration of nutrient at the boundary.
