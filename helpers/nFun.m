@@ -1,0 +1,6 @@
+function res = nFun(arg,params)
+%% The stress-response function n, evaluated at the vector argument arg.
+res = 0.*(arg < params.sigmaHat) + ...
+             (1 - arg/params.sigmaHat).*(arg >= params.sigmaHat).*(arg < 0) + ...
+             1.*(arg >= 0);
+end
