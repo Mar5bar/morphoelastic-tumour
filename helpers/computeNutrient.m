@@ -20,7 +20,12 @@ function nutrient = computeNutrient(r,params)
             fs = f(as);
             guessInd = find(fs(1:end-1).*fs(2:end)<=0,1,'first');
         end
-        rThreshold = fzero(f, as(guessInd:guessInd+1));
+        % At this point, we just set rThreshold to zero.
+        if isempty(guessInd)
+            rThreshold = 0;
+        else
+            rThreshold = fzero(f, as(guessInd:guessInd+1));
+        end
         nutrient = 0*r;
         mask = r > rThreshold;
         nutrient(mask) = params.lambda * r(mask).^2 / (6 * params.D) + ...

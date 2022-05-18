@@ -1,4 +1,8 @@
-function output = runSim(params)
+function output = runSim(params, progressFlag)
+
+    if nargin < 2
+        progressFlag = true;
+    end
 
     % Initial discretisation.
     RsMinusB = zeros(params.nT,params.nR); RsMinusB(1,:) = linspace(0,params.B,params.nR) - params.B;
@@ -15,10 +19,14 @@ function output = runSim(params)
     nutrients = zeros(params.nT,params.nR);
     necroticRadii = zeros(params.nT,1)-Inf;
 
-    clear('textprogressbar.m')
-    textprogressbar('Simulating growth: ');
+    if progressFlag
+        clear('textprogressbar.m')
+        textprogressbar('Simulating growth: ');
+    end
     for tInd = 1 : params.nT
-        textprogressbar(100*tInd/params.nT);
+        if progressFlag
+            textprogressbar(100*tInd/params.nT);
+        end
 
         % Compute the Eulerian radial coordinates.
         rs(tInd,:) = computeRadialCoord(RsMinusB(tInd,:),growthStretches(tInd,:),params);
@@ -67,7 +75,9 @@ function output = runSim(params)
         end
 
     end
-    textprogressbar('\nDone.');
+    if progressFlag
+        textprogressbar('\nDone.');
+    end
 
     % Package output into a structure.
     output = struct();
