@@ -1,0 +1,1 @@
+Data taken from DOI:10.1371/journal.pcbi.1009701, which was originally adapted from Figure 1a and augmented with initial data from Table 1 of DOI:10.1038/nbt0897-778.
