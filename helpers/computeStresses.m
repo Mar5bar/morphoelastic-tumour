@@ -12,7 +12,7 @@ function [radialStress, hoopStress, bulkStress, elasticStretch] = computeStresse
     % expansion until we reach a threshold of R = params.radialStressIntegrandThreshold.
     growthStretchPrime = gradient(growthStretch, RMinusB);
     growthStretchPrimePrime = gradient(growthStretchPrime, RMinusB);
-    approxIntegrand = 2*(-3/2 * growthStretchPrime(1)/gamma(1) + ...
+    approxIntegrand = 2*(-3/2 * growthStretchPrime(1)/growthStretch(1) + ...
                      (3/80 * (growthStretchPrime(1)/growthStretch(1))^2 - ...
                      6/5 * growthStretchPrimePrime(1)/growthStretch(1))*(RMinusB+params.B));
     integrandComposite = approxIntegrand.*(RMinusB<=(params.radialStressIntegrandThreshold-params.B)) + ...
@@ -28,7 +28,7 @@ function [radialStress, hoopStress, bulkStress, elasticStretch] = computeStresse
     
     % As before, we'll use a two-term Taylor expansion to compute the
     % elastic stretch near R=0.
-    approxElasticStretch = 1 - (growthStretchPrime(1)/gamma(1)).*(RMinusB+params.B)/4;
+    approxElasticStretch = 1 - (growthStretchPrime(1)/growthStretch(1)).*(RMinusB+params.B)/4;
     elasticStretch = approxElasticStretch.*(RMinusB<=(params.elasticStretchIntegrandThreshold-params.B)) + ...
                         elasticStretch.*(RMinusB>(params.elasticStretchIntegrandThreshold-params.B));
 
